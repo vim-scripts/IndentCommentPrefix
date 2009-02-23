@@ -83,6 +83,15 @@
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 "
 " REVISION	DATE		REMARKS 
+"   1.00.008	23-Feb-2009	BF: Fixed "E61: Nested *" that occurred when
+"				shifting a line with a comment prefix containing
+"				multiple asterisks in a row (e.g. '**'). This
+"				was caused by a mixed up argument escaping in
+"				s:IsMatchInComments() and one missed escaping
+"				elsewhere. 
+"				BF: Info message (given when indenting multiple
+"				lines) always printed "1 time" even when a
+"				[count] was specified in visual mode. 
 "   1.00.007	29-Jan-2009	BF: Test whether prefix is a comment was too
 "				primitive and failed to distinguish between ':'
 "				(label) and '::' (comment) in dosbatch filetype.
@@ -134,8 +143,13 @@ if ! exists('g:IndentCommentPrefix_alternativeOriginalCommands')
 endif
 
 "------------------------------------------------------------------------------
+function! s:Literal( string )
+" Helper: Make a:string a literal search expression. 
+    return '\V' . escape(a:string, '\') . '\m'
+endfunction
+
 function! s:IsMatchInComments( flag, prefix )
-    return &l:comments =~# '\%(^\|,\)[^:]*\V' . escape(a:flag, '\') . '\m[^:]*:' . a:prefix . '\%(,\|$\)'
+    return &l:comments =~# '\%(^\|,\)[^:]*' . a:flag . '[^:]*:' . s:Literal(a:prefix) . '\%(,\|$\)'
 endfunction
 function! s:IsComment( prefix )
     return s:IsMatchInComments('', a:prefix)
@@ -143,6 +157,8 @@ endfunction
 function! s:IsBlankRequiredAfterPrefix( prefix )
     return s:IsMatchInComments('b', a:prefix)
 endfunction
+
+"------------------------------------------------------------------------------
 function! s:DoIndent( isDedent, isInsertMode, count )
     if a:isInsertMode
 	call feedkeys( repeat((a:isDedent ? "\<C-d>" : "\<C-t>"), a:count), 'n' )
@@ -311,7 +327,7 @@ function! s:IndentKeepCommentPrefixRange( isDedent, count ) range
     execute a:firstline
     let l:matches = matchlist( getline(a:firstline), '\(^\S\+\)\s*' )
     let l:prefix = get(l:matches, 1, '')
-    if ! empty(l:prefix) && &l:comments =~# l:prefix  
+    if ! empty(l:prefix) && &l:comments =~# s:Literal(l:prefix)
 	" Yes, the first line was a special comment prefix indent, not a normal
 	" one. 
 	call search('^\S\+\s*\%(\S\|$\)', 'ce', a:firstline)
@@ -327,7 +343,7 @@ function! s:IndentKeepCommentPrefixRange( isDedent, count ) range
 
     let l:lineNum = l:netLastLine - a:firstline + 1
     if l:lineNum > 1
-	echo l:lineNum 'lines' (a:isDedent ? '<' : '>') . 'ed 1 time'
+	echo printf('%d lines %sed %d time%s', l:lineNum, (a:isDedent ? '<' : '>'), a:count, (a:count > 1 ? 's' : ''))
     endif
 endfunction
 nnoremap <silent> <Plug>IndentCommentPrefix0 :call <SID>IndentKeepCommentPrefixRange(0,1)<CR>
