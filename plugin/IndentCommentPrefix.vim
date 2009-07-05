@@ -40,12 +40,12 @@
 "   operators aren't modified by this script. 
 "
 " INSTALLATION:
-"   Put the script into your user or system VIM plugin directory (e.g.
+"   Put the script into your user or system Vim plugin directory (e.g.
 "   ~/.vim/plugin). 
 "
 " DEPENDENCIES:
-"   - Requires VIM 7.0 or higher. 
-"   - vimscript #2136 repeat.vim autoload script (optional)
+"   - Requires Vim 7.0 or higher. 
+"   - vimscript #2136 repeat.vim autoload script (optional). 
 "
 " CONFIGURATION:
 "   If you don't want the alternative g>> mappings for the original indent
@@ -83,6 +83,12 @@
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 "
 " REVISION	DATE		REMARKS 
+"   1.01.009	03-Jul-2009	BF: When 'report' is less than the default 2,
+"				the :substitute and << / >> commands created
+"				additional messages, causing a hit-enter prompt. 
+"				Now also reporting a single-line change when
+"				'report' is 0 (to be consistent with the
+"				built-in indent commands). 
 "   1.00.008	23-Feb-2009	BF: Fixed "E61: Nested *" that occurred when
 "				shifting a line with a comment prefix containing
 "				multiple asterisks in a row (e.g. '**'). This
@@ -131,7 +137,7 @@
 "				make sure it still exists when dedenting. 
 "	001	11-Aug-2008	file creation
 
-" Avoid installing twice or when in unsupported VIM version. 
+" Avoid installing twice or when in unsupported Vim version. 
 if exists('g:loaded_IndentCommentPrefix') || (v:version < 700)
     finish
 endif
@@ -163,8 +169,17 @@ function! s:DoIndent( isDedent, isInsertMode, count )
     if a:isInsertMode
 	call feedkeys( repeat((a:isDedent ? "\<C-d>" : "\<C-t>"), a:count), 'n' )
     else
-	execute 'normal!' repeat((a:isDedent ? '<<' : '>>'), a:count)
+	" Use :silent to suppress reporting of changed line (when 'report' is
+	" 0). 
+	execute 'silent normal!' repeat((a:isDedent ? '<<' : '>>'), a:count)
     endif
+endfunction
+function! s:SubstituteHere( substituitionCmd )
+    " Use :silent! to suppress any error messages or reporting of changed line
+    " (when 'report' is 0). 
+    " Use :keepjumps to avoid modification of jump list. 
+    execute 'silent! keepjumps s' . a:substituitionCmd
+    call histdel('search', -1)
 endfunction
 function! s:IndentKeepCommentPrefix( isDedent, isInsertMode, count )
 "*******************************************************************************
@@ -216,8 +231,7 @@ function! s:IndentKeepCommentPrefix( isDedent, isInsertMode, count )
     " Note: We have to decide based on the actual indent, because with the
     " softtabstop setting, there may be spaces though the overall indenting is
     " done with <Tab>. 
-    execute 's/^\C\V' . escape(l:prefix, '/\') . '/' . (l:isSpaceIndent ? repeat(' ', len(l:prefix)) : '') . '/'
-    call histdel('/', -1)
+    call s:SubstituteHere('/^\C\V' . escape(l:prefix, '/\') . '/' . (l:isSpaceIndent ? repeat(' ', len(l:prefix)) : '') . '/')
 
     call s:DoIndent( a:isDedent, 0, a:count )
 
@@ -228,14 +242,12 @@ function! s:IndentKeepCommentPrefix( isDedent, isInsertMode, count )
     let l:newIndent = matchstr( getline(l:line), '^\s' )
     " Dedenting may have eaten up all indent spaces. In that case, just
     " re-insert the comment prefix as is done with <Tab> indenting. 
-    execute 's/^' . (l:newIndent == ' ' ? '\%( \{' . len(l:prefix) . '}\)\?' : '') . '/' . escape(l:prefix, '/\&~') . '/'
-    call histdel('/', -1)
+    call s:SubstituteHere('/^' . (l:newIndent == ' ' ? '\%( \{' . len(l:prefix) . '}\)\?' : '') . '/' . escape(l:prefix, '/\&~') . '/')
 
     " If a blank is required after the comment prefix, make sure it still exists
     " when dedenting. 
     if s:IsBlankRequiredAfterPrefix(l:prefix) && a:isDedent
-	execute 's/^' . escape(l:prefix, '/\') . '\ze\S/\0 /e'
-	call histdel('/', -1)
+	call s:SubstituteHere('/^' . escape(l:prefix, '/\') . '\ze\S/\0 /e')
     endif
     
 
@@ -342,8 +354,10 @@ function! s:IndentKeepCommentPrefixRange( isDedent, count ) range
     silent! call repeat#set("\<Plug>IndentCommentPrefix" . a:isDedent, l:netIndentedLines)
 
     let l:lineNum = l:netLastLine - a:firstline + 1
-    if l:lineNum > 1
-	echo printf('%d lines %sed %d time%s', l:lineNum, (a:isDedent ? '<' : '>'), a:count, (a:count > 1 ? 's' : ''))
+    " Vim reports the change if more than one line is indented (unless 'report'
+    " is 0). 
+    if l:lineNum > (&report == 0 ? 0 : 1)
+	echo printf('%d line%s %sed %d time%s', l:lineNum, (l:lineNum == 1 ? '' : 's'), (a:isDedent ? '<' : '>'), a:count, (a:count == 1 ? '' : 's'))
     endif
 endfunction
 nnoremap <silent> <Plug>IndentCommentPrefix0 :call <SID>IndentKeepCommentPrefixRange(0,1)<CR>
