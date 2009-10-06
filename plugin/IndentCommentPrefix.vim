@@ -83,6 +83,8 @@
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 "
 " REVISION	DATE		REMARKS 
+"   1.02.010	06-Oct-2009	Do not define mappings for select mode;
+"				printable characters should start insert mode. 
 "   1.01.009	03-Jul-2009	BF: When 'report' is less than the default 2,
 "				the :substitute and << / >> commands created
 "				additional messages, causing a hit-enter prompt. 
@@ -367,19 +369,19 @@ vnoremap <silent> <Plug>IndentCommentPrefix1 :call <SID>IndentKeepCommentPrefixR
 if ! hasmapto('<Plug>IndentCommentPrefix0', 'n')
     nmap <silent> >> <Plug>IndentCommentPrefix0
 endif
-if ! hasmapto('<Plug>IndentCommentPrefix0', 'v')
-    vmap <silent> > <Plug>IndentCommentPrefix0
+if ! hasmapto('<Plug>IndentCommentPrefix0', 'x')
+    xmap <silent> > <Plug>IndentCommentPrefix0
 endif
 if ! hasmapto('<Plug>IndentCommentPrefix1', 'n')
     nmap <silent> << <Plug>IndentCommentPrefix1
 endif
-if ! hasmapto('<Plug>IndentCommentPrefix1', 'v')
-    vmap <silent> < <Plug>IndentCommentPrefix1
+if ! hasmapto('<Plug>IndentCommentPrefix1', 'x')
+    xmap <silent> < <Plug>IndentCommentPrefix1
 endif
 
 if g:IndentCommentPrefix_alternativeOriginalCommands
     nnoremap g>> >>
-    vnoremap g> >
+    xnoremap g> >
 endif
 
 " vim: set sts=4 sw=4 noexpandtab ff=unix fdm=syntax :
