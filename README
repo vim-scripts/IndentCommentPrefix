@@ -4,42 +4,46 @@ DESCRIPTION
 Indent commands like >>, << and i_CTRL-T, i_CTRL-D in insert mode
 indent the entire line. For some kinds of comments, like the big boilerplate
 at the file header etc., the comment prefix (e.g. # for Perl scripts) should
-remain at the first column, though. 
+remain at the first column, though.
 This plugin modifies these indent commands so that the comment prefix remains
 in the first column, and the indenting takes place between the comment prefix
 and the comment text. For that, it uses the comment configuration provided by
-the buffer's 'comment' option, which is set by most filetype plugins. 
+the buffer's 'comment' option, which is set by most filetype plugins; this can
+be tweaked via plugin configuration.
 
 USAGE
 On a line like this:
-# My comment. 
+# My comment.
 
 The >> command now keeps the # prefix in column 1, and just indents the
 comment text:
-#       My comment. 
+#       My comment.
 
 This only works if there is at least one whitespace character after the prefix
-(so that comments like ###### do not become #       ######). 
+(so that comments like ###### do not become #       ######).
 Progressive de-indenting will remove all whitespace between prefix and comment
 text, or leave a single space in between if the 'comments' setting requires a
-blank after the comment prefix. 
+blank after the comment prefix.
 
 An optional [count] of lines can be supplied to the >> and << commands, as
 before.
 In visual mode, the optional [count] specifies how many 'shiftwidth's should
-be indented; the v_> and v_< commands operate on all highlighted lines. 
+be indented; the v_> and v_< commands operate on all highlighted lines.
 
-With the optional repeat.vim script, the commands can also be repeated via . 
+With the optional repeat.vim script, the commands can also be repeated via .
 
 The same behavior is available in insert mode via the i_CTRL-T and
-i_CTRL-D mappings. 
+i_CTRL-D mappings.
 
 GETTING BACK THE ORIGINAL BEHAVIOR
 g>>
 {Visual}g>
+g<<
+{Visual}g<
 In case you want to indent lines including the comment prefix, the original
 indent behavior is mapped to g>> in normal mode and g> in visual mode.
-(There's no need for the corresponding g<< dedent mappings, just stop
-dedenting when the comment prefix reaches column 1.)
+There's only a need for the corresponding g<< dedent mappings when using the
+g:IndentCommentPrefix_Whitelist, because those prefixes will work not just
+in column 1 (where dedenting is not possible), but in any column.
 Alternatively, you could also use the >{motion} command, as the > and <
-operators aren't modified by this plugin. 
+operators aren't modified by this plugin.

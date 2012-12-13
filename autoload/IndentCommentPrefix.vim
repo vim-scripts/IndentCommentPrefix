@@ -1,100 +1,104 @@
-" IndentCommentPrefix.vim: Keep comment prefix in column 1 when indenting. 
+" IndentCommentPrefix.vim: Keep comment prefix in column 1 when indenting.
 "
 " DEPENDENCIES:
-"   - vimscript #2136 repeat.vim autoload script (optional). 
+"   - ingocomments.vim autoload script
+"   - vimscript #2136 repeat.vim autoload script (optional)
 "
-" Copyright: (C) 2008-2011 by Ingo Karkat
-"   The VIM LICENSE applies to this script; see ':help copyright'. 
+" Copyright: (C) 2008-2011 Ingo Karkat
+"   The VIM LICENSE applies to this script; see ':help copyright'.
 "
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 "
-" REVISION	DATE		REMARKS 
+" REVISION	DATE		REMARKS
+"   1.30.002	12-Dec-2012	ENH: Add global and buffer-local whitelists /
+"				blacklists to explicitly include / exclude
+"				certain comment prefixes.
+"   1.20.014	22-Sep-2011	FIX: Now handling three-piece comments
+"				correctly. The start may set a positive indent
+"				offset for the middle and end comment prefixes
+"				that must be considered.
+"				Factor out processing of 'comments' to
+"				ingocomments.vim autoload script, so that the
+"				functionality can be reused in
+"				IndentTab/CommentPrefix.vim.
+"				FIX: Suppress 'ignorecase' in s:Literal().
+"   1.11.013	20-Sep-2011	Minor code simplification.
 "   1.10.012	30-Mar-2011	Split off separate documentation and autoload
-"				script. 
+"				script.
 "   1.10.011	29-Mar-2011	BUG: Only report changes if more than 'report'
 "				lines where indented; I got the meaning of
-"				'report' wrong the first time. 
+"				'report' wrong the first time.
 "				BUG: Could not use 999>> to indent all remaining
 "				lines. Fix by explicitly passing v:count1 to
 "				s:IndentKeepCommentPrefixRange() from normal
 "				mode mappings and calculating the last line with
 "				a cap, instead of using the implicit
-"				:call-range. 
+"				:call-range.
 "				BUG: Normal-mode mapping didn't necessarily put
 "				the cursor on the first non-blank character
 "				after the comment prefix if 'nostartofline' is
-"				set. 
+"				set.
 "				ENH: In normal and visual mode, set the change
-"				marks '[ and ]' similar to what Vim does. 
+"				marks '[ and ]' similar to what Vim does.
 "   1.02.010	06-Oct-2009	Do not define mappings for select mode;
-"				printable characters should start insert mode. 
+"				printable characters should start insert mode.
 "   1.01.009	03-Jul-2009	BF: When 'report' is less than the default 2,
 "				the :substitute and << / >> commands created
-"				additional messages, causing a hit-enter prompt. 
+"				additional messages, causing a hit-enter prompt.
 "				Now also reporting a single-line change when
 "				'report' is 0 (to be consistent with the
-"				built-in indent commands). 
+"				built-in indent commands).
 "   1.00.008	23-Feb-2009	BF: Fixed "E61: Nested *" that occurred when
 "				shifting a line with a comment prefix containing
 "				multiple asterisks in a row (e.g. '**'). This
 "				was caused by a mixed up argument escaping in
 "				s:IsMatchInComments() and one missed escaping
-"				elsewhere. 
+"				elsewhere.
 "				BF: Info message (given when indenting multiple
 "				lines) always printed "1 time" even when a
-"				[count] was specified in visual mode. 
+"				[count] was specified in visual mode.
 "   1.00.007	29-Jan-2009	BF: Test whether prefix is a comment was too
 "				primitive and failed to distinguish between ':'
 "				(label) and '::' (comment) in dosbatch filetype.
 "				Now using exact regexp factored out into a
-"				function, also for the blank-required check. 
-"	006	22-Jan-2009	Added visual mode mappings. 
+"				function, also for the blank-required check.
+"	006	22-Jan-2009	Added visual mode mappings.
 "				Enhanced implementation to deal with the
 "				optional [count] 'shiftwidth's that can be
-"				specified in visual mode. 
+"				specified in visual mode.
 "	005	04-Jan-2009	BF: Fixed changes of vertical window position by
-"				saving and restoring window view. 
+"				saving and restoring window view.
 "				ENH: The >> and << (range) commands now position
 "				the cursor on the first non-blank character
-"				after the comment prefix; this makes more sense. 
+"				after the comment prefix; this makes more sense.
 "				Now avoiding superfluous cursor positioning when
 "				indenting ranges. (Side effect from the changes
-"				due to restore of window position.) 
+"				due to restore of window position.)
 "	004	21-Aug-2008	BF: Didn't consider that removing the comment
 "				prefix could cause changes in folding (e.g. in
 "				vimscript if the line ends with "if"), which
 "				then affects all indent operations, which now
 "				work on the closed fold instead of the current
-"				line. Now temporarily disabling folding. 
+"				line. Now temporarily disabling folding.
 "				BF: The looping over the passed range in
 "				s:IndentKeepCommentPrefixRange() didn't consider
 "				closed folds, so those (except for a last-line
 "				fold) would be processed multiple times. Now
 "				that folding is temporarily disabling, need to
-"				account for the net end of the range. 
+"				account for the net end of the range.
 "				Added echo message when operating on more than
-"				one line, like the original >> commands. 
+"				one line, like the original >> commands.
 "	003	19-Aug-2008	BF: Indenting/detenting at the first shiftwidth
 "				caused cursor to move to column 1; now adjusting
-"				for the net reduction caused by the prefix. 
-"	002	12-Aug-2008	Do not clobber search history with :s command. 
+"				for the net reduction caused by the prefix.
+"	002	12-Aug-2008	Do not clobber search history with :s command.
 "				If a blank is required after the comment prefix,
-"				make sure it still exists when dedenting. 
+"				make sure it still exists when dedenting.
 "	001	11-Aug-2008	file creation
 
 function! s:Literal( string )
-" Helper: Make a:string a literal search expression. 
-    return '\V' . escape(a:string, '\') . '\m'
-endfunction
-
-function! s:IsMatchInComments( flag, prefix )
-    return &l:comments =~# '\%(^\|,\)[^:]*' . a:flag . '[^:]*:' . s:Literal(a:prefix) . '\%(,\|$\)'
-endfunction
-function! s:IsComment( prefix )
-    return s:IsMatchInComments('', a:prefix)
-endfunction
-function! s:IsBlankRequiredAfterPrefix( prefix )
-    return s:IsMatchInComments('b', a:prefix)
+" Helper: Make a:string a literal search expression.
+    return '\V\C' . escape(a:string, '\') . '\m'
 endfunction
 
 "------------------------------------------------------------------------------
@@ -103,14 +107,14 @@ function! s:DoIndent( isDedent, isInsertMode, count )
 	call feedkeys( repeat((a:isDedent ? "\<C-d>" : "\<C-t>"), a:count), 'n' )
     else
 	" Use :silent to suppress reporting of changed line (when 'report' is
-	" 0). 
+	" 0).
 	execute 'silent normal!' repeat((a:isDedent ? '<<' : '>>'), a:count)
     endif
 endfunction
 function! s:SubstituteHere( substituitionCmd )
     " Use :silent! to suppress any error messages or reporting of changed line
-    " (when 'report' is 0). 
-    " Use :keepjumps to avoid modification of jump list. 
+    " (when 'report' is 0).
+    " Use :keepjumps to avoid modification of jump list.
     execute 'silent! keepjumps s' . a:substituitionCmd
     call histdel('search', -1)
 endfunction
@@ -118,101 +122,117 @@ function! s:IndentCommentPrefix( isDedent, isInsertMode, count )
 "*******************************************************************************
 "* PURPOSE:
 "   Enhanced indent / dedent replacement for >>, <<, i_CTRL-D, i_CTRL-T
-"   commands. 
+"   commands.
 "* ASSUMPTIONS / PRECONDITIONS:
 "   "Normal" prefix characters (i.e. they have screen width of 1 and are encoded
-"   by one byte); as we're using len(l:prefix) to calculate screen width. 
+"   by one byte); as we're using len(l:prefix) to calculate screen width.
 "   Folding should be turned off (:setlocal nofoldenable); otherwise, the
 "   modifications of the line (i.e. removing and re-adding the comment prefix)
 "   may result in creation / removal of folds, and suddenly the function
 "   operates on multiple lines!
 "* EFFECTS / POSTCONDITIONS:
-"   Modifies current line. 
+"   Modifies current line.
 "* INPUTS:
-"   a:isDedent	    Flag whether indenting or dedenting. 
-"   a:isInsertMode  Flag whether normal mode or insert mode replacement. 
+"   a:isDedent	    Flag whether indenting or dedenting.
+"   a:isInsertMode  Flag whether normal mode or insert mode replacement.
 "   a:count	    Number of 'shiftwidth' that should be indented (i.e. number
-"		    of repetitions of the indent command). 
-"* RETURN VALUES: 
+"		    of repetitions of the indent command).
+"* RETURN VALUES:
 "   New virtual cursor column, taking into account a single (a:count == 1)
-"   indent operation. 
+"   indent operation.
 "   Multiple repetitions are not supported here, because the virtual cursor
 "   column is only consumed by the insert mode operation, which is always a
 "   single indent. The (possibly multi-indent) visual mode operation discards
-"   this return value, anyway. 
+"   this return value, anyway.
 "*******************************************************************************
     let l:line = line('.')
-    let l:matches = matchlist( getline(l:line), '\(^\S\+\)\(\s*\)' )
+    " The comment prefix may contain indent if it's the middle or end part of a
+    " three-piece comment.
+    let l:matches = matchlist(getline(l:line), '^\(\s*\(\S\+\)\)\(\s*\)')
     let l:prefix = get(l:matches, 1, '')
-    let l:indent = get(l:matches, 2, '')
-    let l:isSpaceIndent = (l:indent =~# '^ ')
+    let l:prefixChars = get(l:matches, 2, '')
+    let l:indent = get(l:matches, 3, '')
 
-    if empty(l:prefix) || ! s:IsComment(l:prefix)
-	" No prefix in this line or the prefix is not registered as a comment. 
+    if empty(l:prefix)
+	" No prefix in this line.
 	call s:DoIndent( a:isDedent, a:isInsertMode, a:count )
-	" The built-in indent commands automatically adjust the cursor column. 
-	return virtcol('.')
+	return virtcol('.') " The built-in indent commands automatically adjust the cursor column.
+    endif
+
+    let l:whitelist = ingoplugin#GetBufferLocalSetting('IndentCommentPrefix_Whitelist', [])
+    if empty(l:whitelist) || index(l:whitelist, l:prefixChars) == -1
+	let l:commentPrefixType = ingocomments#GetCommentPrefixType(l:prefix)
+	if empty(l:commentPrefixType) || index(ingoplugin#GetBufferLocalSetting('IndentCommentPrefix_Blacklist', []), l:prefixChars) != -1
+	    " This is not a comment prefix located at the start of the line.
+	    " Or this comment prefix is contained in the blacklist.
+	    call s:DoIndent( a:isDedent, a:isInsertMode, a:count )
+	    return virtcol('.') " The built-in indent commands automatically adjust the cursor column.
+	endif
+	let l:isBlankRequiredAfterPrefix = l:commentPrefixType[1]
+    else
+	" This prefix is contained in the whitelist; treat this as a comment
+	" prefix regardless of whether it is configured in 'comments'.
+	let l:isBlankRequiredAfterPrefix = 0
     endif
 
 
-
-"****D echomsg l:isSpaceIndent ? 'spaces' : 'tab'
+    let l:isSpaceIndent = (l:indent =~# '^ ')
     let l:virtCol = virtcol('.')
 
     " If the actual indent is a <Tab>, remove the prefix. If it is <Space>,
-    " replace prefix with spaces so that the overall indentation remains fixed. 
+    " replace prefix with spaces so that the overall indentation remains fixed.
     " Note: We have to decide based on the actual indent, because with the
     " softtabstop setting, there may be spaces though the overall indenting is
-    " done with <Tab>. 
-    call s:SubstituteHere('/^\C\V' . escape(l:prefix, '/\') . '/' . (l:isSpaceIndent ? repeat(' ', len(l:prefix)) : '') . '/')
+    " done with <Tab>.
+    call s:SubstituteHere('/^\V\C' . escape(l:prefix, '/\') . '/' . (l:isSpaceIndent ? repeat(' ', len(l:prefix)) : '') . '/')
 
     call s:DoIndent( a:isDedent, 0, a:count )
 
     " If the first indent is a <Tab>, re-insert the prefix. If it is <Space>,
-    " replace spaces with prefix so that the overall indentation remains fixed. 
+    " replace spaces with prefix so that the overall indentation remains fixed.
     " Note: We have to re-evaluate because the softtabstop setting may have
-    " changed <Tab> into spaces and vice versa. 
+    " changed <Tab> into spaces and vice versa.
     let l:newIndent = matchstr( getline(l:line), '^\s' )
     " Dedenting may have eaten up all indent spaces. In that case, just
-    " re-insert the comment prefix as is done with <Tab> indenting. 
+    " re-insert the comment prefix as is done with <Tab> indenting.
     call s:SubstituteHere('/^' . (l:newIndent == ' ' ? '\%( \{' . len(l:prefix) . '}\)\?' : '') . '/' . escape(l:prefix, '/\&~') . '/')
 
     " If a blank is required after the comment prefix, make sure it still exists
-    " when dedenting. 
-    if s:IsBlankRequiredAfterPrefix(l:prefix) && a:isDedent
+    " when dedenting.
+    if l:isBlankRequiredAfterPrefix && a:isDedent
 	call s:SubstituteHere('/^' . escape(l:prefix, '/\') . '\ze\S/\0 /e')
     endif
-    
+
 
     " Adjust cursor column based on the _virtual_ column. (Important since we're
-    " dealing with <Tab> characters here!) 
+    " dealing with <Tab> characters here!)
     " Note: This calculation ignores a:count, see note in function
-    " documentation. 
+    " documentation.
     let l:newVirtCol = l:virtCol
     if ! a:isDedent && l:isSpaceIndent && len(l:prefix . l:indent) < &l:sw
 	" If the former indent was less than one shiftwidth and indenting was
-	" done via spaces, this reduces the net change of cursor position. 
+	" done via spaces, this reduces the net change of cursor position.
 	let l:newVirtCol -= len(l:prefix . l:indent)
     elseif a:isDedent && l:isSpaceIndent && len(l:prefix . l:indent) <= &l:sw
 	" Also, on the last possible dedent, the prefix (and one <Space> if blank
-	" required) will reduce the net change of cursor position. 
-	let l:newVirtCol += len(l:prefix) + (s:IsBlankRequiredAfterPrefix(l:prefix) ? 1 : 0)
+	" required) will reduce the net change of cursor position.
+	let l:newVirtCol += len(l:prefix) + (l:isBlankRequiredAfterPrefix ? 1 : 0)
     endif
     " Calculate new cursor position based on indent/dedent of shiftwidth,
-    " considering the adjustments made before. 
+    " considering the adjustments made before.
     let l:newVirtCol += (a:isDedent ? -1 : 1) * &l:sw
 
 "****D echomsg '****' l:virtCol l:newVirtCol len(l:prefix . l:indent)
     return l:newVirtCol
 
     " Note: The cursor column isn't updated here anymore, because the window
-    " view had to be saved and restored by the caller of this function, anyway. 
+    " view had to be saved and restored by the caller of this function, anyway.
     " (Due to the temporary disabling of folding.) As the window position
     " restore also restores the old cursor position, the setting here would be
     " overwritten, anyway.
     " Plus, the IndentCommentPrefix#Range() functionality sets the cursor
     " position in a different way, anyway, and only for the first line in the
-    " range, so the cursor movement here would be superfluous, too. 
+    " range, so the cursor movement here would be superfluous, too.
     "call cursor(l:line, 1)
     "if l:newVirtCol > 1
     "	call search('\%>' . (l:newVirtCol - 1) . 'v', 'c', l:line)
@@ -223,10 +243,10 @@ function! IndentCommentPrefix#InsertMode( isDedent )
     " The temporary disabling of folding below may result in a change of the
     " viewed lines, which would be irritating for a command that only modified
     " the current line. Thus, save and restore the view, but afterwards take
-    " into account that the indenting changes the cursor column. 
+    " into account that the indenting changes the cursor column.
     let l:save_view = winsaveview()
 
-    " Temporarily turn off folding while indenting the line. 
+    " Temporarily turn off folding while indenting the line.
     let l:save_foldenable = &l:foldenable
     setlocal nofoldenable
 
@@ -236,7 +256,7 @@ function! IndentCommentPrefix#InsertMode( isDedent )
     call winrestview(l:save_view)
 
     " Set new cursor position after indenting; the saved view has reset the
-    " position to before indent. 
+    " position to before indent.
     call cursor('.', 1)
     if l:newVirtCol > 1
 	call search('\%>' . (l:newVirtCol - 1) . 'v', 'c', line('.'))
@@ -246,18 +266,18 @@ endfunction
 function! IndentCommentPrefix#Range( isDedent, count, lineNum ) range
     " The temporary disabling of folding below may result in a change of the
     " viewed lines, which would be irritating for a command that only modified
-    " the current line. Thus, save and restore the view. 
+    " the current line. Thus, save and restore the view.
     let l:save_view = winsaveview()
 
     " From a normal mode mapping, the count in a:lineNum may address more lines
     " than actually existing (e.g. when using 999>> to indent all remaining
-    " lines); the calculated last line needs to be capped to avoid errors. 
+    " lines); the calculated last line needs to be capped to avoid errors.
     let l:lastLine = (a:lastline == a:firstline ? min([a:firstline + a:lineNum - 1, line('$')]) : a:lastline)
 
-    " Determine the net last line (different if last line is folded). 
+    " Determine the net last line (different if last line is folded).
     let l:netLastLine = (foldclosedend(l:lastLine) == -1 ? l:lastLine : foldclosedend(l:lastLine))
 
-    " Temporarily turn off folding while indenting the lines. 
+    " Temporarily turn off folding while indenting the lines.
     let l:save_foldenable = &l:foldenable
     setlocal nofoldenable
 
@@ -268,7 +288,7 @@ function! IndentCommentPrefix#Range( isDedent, count, lineNum ) range
     let &l:foldenable = l:save_foldenable
     call winrestview(l:save_view)
 
-    " Go back to first line, like the default >> indent commands. 
+    " Go back to first line, like the default >> indent commands.
     execute 'normal!' a:firstline . 'G^'
     let l:startChangePosition = getpos('.')
 
@@ -276,26 +296,25 @@ function! IndentCommentPrefix#Range( isDedent, count, lineNum ) range
     " But put the cursor on the first non-blank character after the comment
     " prefix, not on first overall non-blank character, as the default >> indent
     " commands would do. This makes more sense, since we're essentially ignoring
-    " the comment prefix during indenting. 
-    let l:matches = matchlist( getline(a:firstline), '\(^\S\+\)\s*' )
-    let l:prefix = get(l:matches, 1, '')
+    " the comment prefix during indenting.
+    let l:prefix = get(matchlist(getline(a:firstline), '^\(\S\+\)\s*'), 1, '')
     if ! empty(l:prefix) && &l:comments =~# s:Literal(l:prefix)
 	" Yes, the first line was a special comment prefix indent, not a normal
-	" one. 
+	" one.
 	call search('^\S\+\s*\%(\S\|$\)', 'ce', a:firstline)
     endif
 
-    " Integration into repeat.vim. 
+    " Integration into repeat.vim.
     let l:netIndentedLines = l:netLastLine - a:firstline + 1
     " Passing the net number of indented lines is necessary to correctly repeat
     " (in normal mode) indenting of a visual selection. Otherwise, only the
     " current line would be indented because v:count was 1 during the visual
-    " indent operation. 
+    " indent operation.
     silent! call repeat#set("\<Plug>IndentCommentPrefix" . a:isDedent, l:netIndentedLines)
 
     " Set the change marks similar to what Vim does. (I don't grasp the logic
-    " for '[, but using the first non-blank character seems reasonable to me.) 
-    " This must somehow be done after the call to repeat.vim. 
+    " for '[, but using the first non-blank character seems reasonable to me.)
+    " This must somehow be done after the call to repeat.vim.
     call setpos("'[", l:startChangePosition)
     call setpos("']", [0, l:netLastLine, strlen(getline(l:netLastLine)), 0])
 
@@ -305,4 +324,4 @@ function! IndentCommentPrefix#Range( isDedent, count, lineNum ) range
     endif
 endfunction
 
-" vim: set sts=4 sw=4 noexpandtab ff=unix fdm=syntax :
+" vim: set ts=8 sts=4 sw=4 noexpandtab ff=unix fdm=syntax :
