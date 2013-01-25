@@ -4,12 +4,20 @@
 "   - Requires Vim 7.0 or higher.
 "   - IndentCommentPrefix.vim autoload script
 "
-" Copyright: (C) 2008-2011 Ingo Karkat
+" Copyright: (C) 2008-2013 Ingo Karkat
 "   The VIM LICENSE applies to this script; see ':help copyright'.
 "
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 "
 " REVISION	DATE		REMARKS
+"   1.31.004	24-Jan-2013	Also define opposite g<< commands with
+"				g:IndentCommentPrefix_alternativeOriginalCommands.
+"				It's good for consistency (my muscle memory
+"				often cannot distingish indenting from
+"				dedenting), and necessary when using the
+"				g:IndentCommentPrefix_Whitelist, because those
+"				work not just in column 1 (where dedenting is
+"				not possible), but in any column.
 "   1.30.003	13-Dec-2012	Handle readonly and nomodifiable buffers by
 "				printing just the warning / error, without
 "				the multi-line function error.
@@ -65,6 +73,8 @@ endif
 if g:IndentCommentPrefix_alternativeOriginalCommands
     nnoremap g>> >>
     xnoremap g> >
+    nnoremap g<< <<
+    xnoremap g< <
 endif
 
 " vim: set ts=8 sts=4 sw=4 noexpandtab ff=unix fdm=syntax :

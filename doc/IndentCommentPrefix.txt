@@ -51,13 +51,16 @@ The same behavior is available in insert mode via the |i_CTRL-T| and
 |i_CTRL-D| mappings.
 
 GETTING BACK THE ORIGINAL BEHAVIOR					     *
-								  *g>>* *v_g>*
+						     *g>>* *v_g>* *g<<* *v_g<*
 g>>
 {Visual}g>
+g<<
+{Visual}g<
 In case you want to indent lines including the comment prefix, the original
 indent behavior is mapped to g>> in normal mode and g> in visual mode.
-(There's no need for the corresponding g<< dedent mappings, just stop
-dedenting when the comment prefix reaches column 1.)
+There's only a need for the corresponding g<< dedent mappings when using the
+|g:IndentCommentPrefix_Whitelist|, because those prefixes will work not just
+in column 1 (where dedenting is not possible), but in any column.
 Alternatively, you could also use the >{motion} command, as the > and <
 operators aren't modified by this plugin.
 
@@ -90,9 +93,10 @@ variable: >
     let g:IndentCommentPrefix_Blacklist = ['#', '>']
 <
 	   *b:IndentCommentPrefix_Whitelist* *g:IndentCommentPrefix_Whitelist*
-Alternatively, if you want to modify the indenting behavior only for certain
-prefixes, add each prefix to the following (buffer-local or global) List
-variable. These prefixes do not need to be contained in 'comments' then. > >
+If you want to modify the indenting behavior for certain prefixes not just in
+column 1, but with any existing indent, add each prefix to the following
+(buffer-local or global) List variable. These prefixes do not need to be
+contained in 'comments' then. >
     let g:IndentCommentPrefix_Whitelist = ['REMARK:']
 <
 
@@ -106,7 +110,7 @@ _before_ sourcing the script (e.g. in your |vimrc|): >
     vmap <Leader><lt>  <Plug>IndentCommentPrefix1
 <
 			   *g:IndentCommentPrefix_alternativeOriginalCommands*
-If you don't want the alternative g>> mappings for the original indent
+If you don't want the alternative g>> and g<< mappings for the original indent
 commands, set the following variable _before_ sourcing the plugin: >
     let g:IndentCommentPrefix_alternativeOriginalCommands = 0
 <
@@ -140,6 +144,13 @@ IDEAS						   *IndentCommentPrefix-ideas*
 
 ==============================================================================
 HISTORY						 *IndentCommentPrefix-history*
+
+1.31	25-Jan-2013
+Also define opposite g<< commands with
+g:IndentCommentPrefix_alternativeOriginalCommands. It's good for consistency
+(my muscle memory often cannot distingish indenting from dedenting), and
+necessary when using the g:IndentCommentPrefix_Whitelist, because those work
+not just in column 1 (where dedenting is not possible), but in any column.
 
 1.30	13-Dec-2012
 - ENH: Add global and buffer-local whitelists / blacklists to explicitly
@@ -188,7 +199,7 @@ Initial publish.
 Started development.
 
 ==============================================================================
-Copyright: (C) 2008-2012 Ingo Karkat
+Copyright: (C) 2008-2013 Ingo Karkat
 The VIM LICENSE applies to this script; see |copyright|.
 
 Maintainer:	Ingo Karkat <ingo@karkat.de>
