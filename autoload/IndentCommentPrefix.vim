@@ -1,15 +1,18 @@
 " IndentCommentPrefix.vim: Keep comment prefix in column 1 when indenting.
 "
 " DEPENDENCIES:
-"   - ingocomments.vim autoload script
+"   - ingo/plugin/setting.vim autoload script
+"   - ingo/comments.vim autoload script
 "   - vimscript #2136 repeat.vim autoload script (optional)
 "
-" Copyright: (C) 2008-2011 Ingo Karkat
+" Copyright: (C) 2008-2013 Ingo Karkat
 "   The VIM LICENSE applies to this script; see ':help copyright'.
 "
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 "
 " REVISION	DATE		REMARKS
+"   1.32.004	02-May-2013	Move ingocomments.vim into ingo-library.
+"   1.32.003	10-Apr-2013	Move ingoplugins.vim into ingo-library.
 "   1.30.002	12-Dec-2012	ENH: Add global and buffer-local whitelists /
 "				blacklists to explicitly include / exclude
 "				certain comment prefixes.
@@ -159,10 +162,10 @@ function! s:IndentCommentPrefix( isDedent, isInsertMode, count )
 	return virtcol('.') " The built-in indent commands automatically adjust the cursor column.
     endif
 
-    let l:whitelist = ingoplugin#GetBufferLocalSetting('IndentCommentPrefix_Whitelist', [])
+    let l:whitelist = ingo#plugin#setting#GetBufferLocal('IndentCommentPrefix_Whitelist', [])
     if empty(l:whitelist) || index(l:whitelist, l:prefixChars) == -1
-	let l:commentPrefixType = ingocomments#GetCommentPrefixType(l:prefix)
-	if empty(l:commentPrefixType) || index(ingoplugin#GetBufferLocalSetting('IndentCommentPrefix_Blacklist', []), l:prefixChars) != -1
+	let l:commentPrefixType = ingo#comments#GetCommentPrefixType(l:prefix)
+	if empty(l:commentPrefixType) || index(ingo#plugin#setting#GetBufferLocal('IndentCommentPrefix_Blacklist', []), l:prefixChars) != -1
 	    " This is not a comment prefix located at the start of the line.
 	    " Or this comment prefix is contained in the blacklist.
 	    call s:DoIndent( a:isDedent, a:isInsertMode, a:count )

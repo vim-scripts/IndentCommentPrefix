@@ -78,6 +78,8 @@ To uninstall, use the |:RmVimball| command.
 DEPENDENCIES				    *IndentCommentPrefix-dependencies*
 
 - Requires Vim 7.0 or higher.
+- Requires the |ingo-library.vim| plugin (vimscript #4433), version 1.005 or
+  higher.
 - repeat.vim (vimscript #2136) plugin (optional)
 
 ==============================================================================
@@ -145,6 +147,13 @@ IDEAS						   *IndentCommentPrefix-ideas*
 ==============================================================================
 HISTORY						 *IndentCommentPrefix-history*
 
+1.32	19-Nov-2013
+- Add special case to handle the (rather obscure) |i_0_CTRL-D| and
+  |i_^_CTRL-D| commands, which were broken by the plugin's insert mode
+  mapping.
+- Add dependency to ingo-library (vimscript #4433). *** You need to separately
+  install ingo-library (vimscript #4433) version 1.005 (or higher)! ***
+
 1.31	25-Jan-2013
 Also define opposite g<< commands with
 g:IndentCommentPrefix_alternativeOriginalCommands. It's good for consistency
@@ -200,7 +209,7 @@ Started development.
 
 ==============================================================================
 Copyright: (C) 2008-2013 Ingo Karkat
-The VIM LICENSE applies to this script; see |copyright|.
+The VIM LICENSE applies to this plugin; see |copyright|.
 
 Maintainer:	Ingo Karkat <ingo@karkat.de>
 ==============================================================================
